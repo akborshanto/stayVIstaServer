@@ -3,7 +3,12 @@ const app = express();
 require("dotenv").config();
 const cors = require("cors");
 const cookieParser = require("cookie-parser");
-const { MongoClient, ServerApiVersion, ObjectId } = require("mongodb");
+const {
+  MongoClient,
+  ServerApiVersion,
+  ObjectId,
+  Timestamp,
+} = require("mongodb");
 const jwt = require("jsonwebtoken");
 
 const port = process.env.PORT || 5000;
@@ -90,9 +95,56 @@ const client = new MongoClient(uri, {
 async function run() {
   try {
     // Connect the client to the server	(optional starting in v4.7)
-
+    /*     /* ========================================
+                ALL COLLECTION NAME
+    =====================================*/
     const roomCollection = client.db("stayvista").collection("room");
+    const usersCollection = client.db("stayvista").collection("users");
 
+    /* ========================================
+                 USER COLLECTION ALL DATA
+    =====================================*/
+
+    /*put the user in user collection */
+
+    app.get("/user", async (req, res) => {
+      const result = await usersCollection.find().toArray();
+      res.send(result);
+    });
+    app.put("/user", async (req, res) => {
+      const userData = req.body;
+      const query = { email: userData?.email };
+
+      //check if user is already Exists ,subsitst,remain,stay
+      const isExist = await usersCollection.findOne({ email: userData?.email });
+
+      if (isExist) {
+        /*user  statuse updata */
+        if (userData.status === "Requested") {
+          const result = await usersCollection.updateOne(query, {
+            $set: { status: userData.status },
+          });
+          return res.send(result);
+        } else {
+          res.send(isExist);
+        }
+      }
+
+      //  if (isExist) return res.send(isExist);
+
+      const option = { upsert: true };
+      const updateDoc = {
+        $set: { ...userData, Timestamp: Date.now(), updateAt: new Date() },
+      };
+      console.log(query);
+      const result = await usersCollection.updateOne(query, updateDoc, option);
+      console.log(result);
+      res.send(result);
+    });
+
+    /* ========================================
+                 ROOM COLLECTION ALL DATA
+    =====================================*/
     app.get("/rooms", async (req, res) => {
       const category = req.query.category;
       let query = {};
@@ -110,45 +162,32 @@ async function run() {
       res.send(consequence);
     });
 
+    /* POST THE DATA  In ROOOM COOLECTION DB  */
+    app.post("/room", async (req, res) => {
+      const query = req.body;
+      console.log(query);
+      const result = await roomCollection.insertOne(query);
+      res.send(result);
+    });
+    /* Get The my listing data specipic uerer */
 
+    app.get("/my-listings/:email", async (req, res) => {
+      const email = req.params.email || "";
+      // console.log(email)
+      const query = { "host.email": email };
+      // console.log(query)
+      const resut = await roomCollection.find(query).toArray();
+      res.send(resut);
+    });
 
-/* POST THE DATA  In ROOOM COOLECTION DB  */
-app.post('/room',async (req,res)=>{
-const query= req.body;
-console.log(query)
-const result= await roomCollection.insertOne(query);
-res.send(result)
+    /*DELETE The my listing data specipic uerer */
+    app.delete("/my-List/:id", async (req, res) => {
+      const id = req.params.id;
+      const query = { _id: new ObjectId(id) };
 
-
-
-})
-/* Get The my listing data specipic uerer */
-
-app.get('/my-listings/:email',async (req,res)=>{
-
-const email= req.params.email || "";
-// console.log(email)
-const query= {'host.email': email}
-// console.log(query)
-const resut= await roomCollection.find(query).toArray()
-res.send(resut)
-
-
-})
-
-/*DELETE The my listing data specipic uerer */
-app.delete('/my-List/:id',async(req,res)=>{
-
-const id=req.params.id;
-const query={_id: new ObjectId(id)}
-
-const result= await roomCollection.deleteOne(query)
-res.send(result)
-
-})
-
-
-
+      const result = await roomCollection.deleteOne(query);
+      res.send(result);
+    });
 
     // await client.connect();
     // Send a ping to confirm a successful connection
