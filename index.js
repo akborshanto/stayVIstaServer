@@ -11,7 +11,7 @@ const {
 } = require("mongodb");
 const jwt = require("jsonwebtoken");
 
-const port = process.env.PORT || 5000;
+const port = process.env.PORT || 8000;
 
 // middleware
 const corsOptions = {
@@ -107,6 +107,16 @@ async function run() {
 
     /*put the user in user collection */
 
+    /* get the spectip email data use  ROLE */
+    app.get("/user/:email", async (req, res) => {
+      const email = req.params.email;
+
+      const result = await usersCollection.findOne({ email });
+      //console.log(result)
+      res.send(result);
+    });
+
+    /* get the all user */
     app.get("/user", async (req, res) => {
       const result = await usersCollection.find().toArray();
       res.send(result);
@@ -126,7 +136,7 @@ async function run() {
           });
           return res.send(result);
         } else {
-          res.send(isExist);
+         return  res.send(isExist);
         }
       }
 
@@ -141,6 +151,24 @@ async function run() {
       console.log(result);
       res.send(result);
     });
+/* path user data */
+app.path('/user/update/:email',async (req,res)=>{
+const email=req.params.email;
+console.log(email)
+const user=req.body;
+const query={email}
+ const updateDoc={
+
+$set:{
+  ...user,Timestamp:Date.now()
+}
+
+ }
+const result= await usersCollection.updateOne(query,updateDoc)
+
+
+})
+
 
     /* ========================================
                  ROOM COLLECTION ALL DATA
